@@ -1,0 +1,17 @@
+[package]
+name = "teamy-facet-toml"
+version = "0.50.0-rc.7"
+edition = "2024"
+rust-version = "1.92"
+license = "MIT OR Apache-2.0"
+description = "Manifest-only Facet TOML parser subset for embed-resource"
+publish = false
+
+[dependencies]
+facet-core = { package = "teamy-facet-core", version = "=0.50.0-rc.7" }
+facet-format = { package = "teamy-facet-format", version = "=0.50.0-rc.9" }
+facet-reflect = { package = "teamy-facet-reflect", version = "=0.50.0-rc.7" }
+toml_parser = { version = "1.0.4", default-features = false, features = ["alloc"] }
+
+[dev-dependencies]
+facet = { package = "teamy-facet", version = "=0.50.0-rc.7" }

@@ -2,6 +2,29 @@
 A [`Cargo` build script](https://doc.rust-lang.org/cargo/reference/build-scripts.html) library to handle compilation and inclusion of Windows resources
 in the most resilient fashion imaginable
 
+## Teamy fork: optional manifest discovery
+
+The default `manifest-discovery` feature retains `compile()`. It parses
+`Cargo.toml` with the Teamy Facet stack to detect an explicit top-level
+`[[bin]]` declaration. If parsing fails, `compile()` keeps the upstream
+fallback to `src/main.rs` or `src/bin/`. The resource compiler and linking
+paths remain upstream code.
+
+Projects that use `compile_for_everything()` or another `compile_for*()` API
+can disable default features. In that configuration `compile()` is unavailable
+at compile time, and no TOML parser or Facet crate is in the normal dependency
+graph:
+
+```toml
+[build-dependencies]
+embed-resource = { git = "https://github.com/TeamDman/teamy-embed-resource", default-features = false }
+```
+
+The fork retains the upstream MIT license and history. The local Facet TOML
+source subset has its own MIT OR Apache-2.0 notices in
+`vendor/teamy-facet-toml`. The fork requires Rust 1.92. It has not been
+published to crates.io or qualified on Windows.
+
 ## [Documentation](https://docs.rs/embed-resource)
 
 ## Quickstart

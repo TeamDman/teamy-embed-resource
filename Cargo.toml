@@ -1,12 +1,12 @@
 [package]
 name = "embed-resource"
 description = "A Cargo library to handle compilation and inclusion of Windows resources in the most resilient fashion imaginable"
-repository = "https://github.com/nabijaczleweli/rust-embed-resource"
+repository = "https://github.com/TeamDman/teamy-embed-resource"
 readme = "README.md"
 keywords = ["cargo", "build", "windows", "resource", "manifest"]
 categories = ["development-tools", "os::windows-apis"]
 edition = "2021"
-rust-version = "1.76"
+rust-version = "1.92"
 license = "MIT"
 # Remember to also update in appveyor.yml
 # Remember to also update in .github/workflows/msvc/test.py
@@ -47,11 +47,27 @@ authors = ["наб <nabijaczleweli@nabijaczleweli.xyz>",
            "Thomas Eizinger <thomas@eizinger.io>"]
 exclude = ["*.enc"]
 
+[package.metadata.teamy]
+upstream_repository = "https://github.com/nabijaczleweli/rust-embed-resource"
+upstream_revision = "0d183985c33096a658c3fd8ba19d7eec6cee1dba"
+
 
 [dependencies]
 rustc_version = "0.4"
-toml = "1"
 cc = "1.2"
+facet = { package = "teamy-facet", version = "=0.50.0-rc.7", optional = true }
+facet-toml = { package = "teamy-facet-toml", path = "vendor/teamy-facet-toml", version = "=0.50.0-rc.7", optional = true }
+
+[features]
+default = ["manifest-discovery"]
+# Enables compile(), which checks Cargo.toml for explicit [[bin]] targets.
+# compile_for*() remains available without this feature.
+manifest-discovery = ["dep:facet", "dep:facet-toml"]
+
+[[bin]]
+name = "rust-embed-resource"
+path = "src/main.rs"
+required-features = ["manifest-discovery"]
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
 memchr = "2.7"

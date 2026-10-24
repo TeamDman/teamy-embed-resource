@@ -45,6 +45,8 @@
 //! extern crate embed_resource;
 //!
 //! fn main() {
+//! # #[cfg(feature = "manifest-discovery")]
+//! # {
 //!     embed_resource::compile("checksums.rc", embed_resource::NONE).manifest_optional().unwrap();
 //!     // or
 //!     embed_resource::compile("checksums.rc", &["VERSION=000901"]).manifest_required().unwrap();
@@ -54,6 +56,7 @@
 //!     // or
 //!     embed_resource::compile("checksums.rc", embed_resource::ParamsIncludeDirs(
 //!         &["src/include"])).manifest_required().unwrap();
+//! # }
 //! }
 //! ```
 //!
@@ -74,6 +77,7 @@
 //! full non-system dependency list for your manifest manually, so:
 //! ```rust,no_run
 //! println!("cargo:rerun-if-changed=app-name-manifest.rc");
+//! # #[cfg(feature = "manifest-discovery")]
 //! embed_resource::compile("app-name-manifest.rc", embed_resource::NONE);
 //! ```
 //! for the above example (cf. [#41](https://github.com/nabijaczleweli/rust-embed-resource/issues/41)).
@@ -141,7 +145,6 @@ extern crate vswhom;
 #[cfg(all(target_os = "windows", target_env = "msvc"))]
 extern crate winreg;
 extern crate rustc_version;
-extern crate toml;
 
 #[cfg(not(target_os = "windows"))]
 mod non_windows;
@@ -157,16 +160,19 @@ use self::windows_msvc::*;
 #[cfg(all(target_os = "windows", not(target_env = "msvc")))]
 use self::windows_not_msvc::*;
 
-use std::{env, fs};
+use std::env;
+#[cfg(feature = "manifest-discovery")]
+use std::fs;
 use std::ffi::{OsString, OsStr};
 use std::borrow::Cow;
 use std::process::Command;
-use toml::Table as TomlTable;
+#[cfg(feature = "manifest-discovery")]
+use facet::Facet;
 use std::fmt::{self, Display};
 use std::path::{Path, PathBuf};
 
 
-/// Empty slice, properly-typed for [`compile()`] and `compile_for*()` to mean "no additional parameters".
+/// Empty slice, properly-typed for resource compilation to mean "no additional parameters".
 ///
 /// Rust helpfully forbids default type parameters on functions, so just passing `[]` doesn't work :)
 pub const NONE: &[&OsStr] = &[];
@@ -227,7 +233,7 @@ impl<Ms: AsRef<OsStr>, Mi: IntoIterator<Item = Ms>, Is: AsRef<OsStr>, Ii: IntoIt
 
 
 /// https://101010.pl/@nabijaczleweli/115226665478478763
-#[cfg(test)]
+#[cfg(all(test, feature = "manifest-discovery"))]
 #[allow(dead_code)]
 fn compat_3_0_5() {
     use std::collections::BTreeSet;
@@ -407,6 +413,10 @@ macro_rules! try_compile_impl {
 ///
 /// # Examples
 ///
+/// Requires the default `manifest-discovery` feature. For callers that do not
+/// need Cargo.toml bin discovery, disable default features and use one of the
+/// `compile_for*()` functions instead.
+///
 /// In your build script, assuming the crate's name is "checksums":
 ///
 /// ```rust,no_run
@@ -417,6 +427,7 @@ macro_rules! try_compile_impl {
 ///     embed_resource::compile("checksums.rc", embed_resource::NONE);
 /// }
 /// ```
+#[cfg(feature = "manifest-discovery")]
 pub fn compile<T: AsRef<Path>,
                Ms: AsRef<OsStr>,
                Mi: IntoIterator<Item = Ms>,
@@ -426,17 +437,7 @@ pub fn compile<T: AsRef<Path>,
     resource_file: T, parameters: P)
     -> CompilationResult {
     let (prefix, out_dir, out_file) = try_compile_impl!(compile_impl(resource_file.as_ref(), parameters.into()));
-    let hasbins = fs::read_to_string("Cargo.toml")
-        .unwrap_or_else(|err| {
-            eprintln!("Couldn't read Cargo.toml: {}; assuming src/main.rs or S_ISDIR(src/bin/)", err);
-            String::new()
-        })
-        .parse::<TomlTable>()
-        .unwrap_or_else(|err| {
-            eprintln!("Couldn't parse Cargo.toml: {}; assuming src/main.rs or S_ISDIR(src/bin/)", err);
-            TomlTable::new()
-        })
-        .contains_key("bin") || (Path::new("src/main.rs").exists() || Path::new("src/bin").is_dir());
+    let hasbins = has_explicit_bins() || (Path::new("src/main.rs").exists() || Path::new("src/bin").is_dir());
     eprintln!("Final verdict: crate has binaries: {}", hasbins);
 
     if hasbins && rustc_version::version().expect("couldn't get rustc version") >= rustc_version::Version::new(1, 50, 0) {
@@ -448,6 +449,94 @@ pub fn compile<T: AsRef<Path>,
         println!("cargo:rustc-link-lib=dylib={}", prefix);
     }
     CompilationResult::Ok
+}
+
+/// Only the presence of a top-level `bin` array matters here. Unknown Cargo
+/// manifest fields are ignored by Facet, matching the old `toml::Table` probe.
+#[cfg(feature = "manifest-discovery")]
+#[derive(Facet)]
+struct ManifestBinProbe {
+    bin: Option<Vec<BinProbe>>,
+}
+
+#[cfg(feature = "manifest-discovery")]
+#[derive(Facet)]
+struct BinProbe {
+    name: Option<String>,
+    path: Option<String>,
+}
+
+#[cfg(feature = "manifest-discovery")]
+fn parse_explicit_bins(input: &str) -> Result<bool, facet_toml::DeserializeError> {
+    facet_toml::from_str::<ManifestBinProbe>(input).map(|manifest| manifest.bin.is_some())
+}
+
+#[cfg(feature = "manifest-discovery")]
+fn has_explicit_bins() -> bool {
+    match fs::read_to_string("Cargo.toml") {
+        Ok(input) => match parse_explicit_bins(&input) {
+            Ok(has_bins) => has_bins,
+            Err(err) => {
+                eprintln!("Couldn't parse Cargo.toml: {}; assuming src/main.rs or S_ISDIR(src/bin/)", err);
+                false
+            }
+        },
+        Err(err) => {
+            eprintln!("Couldn't read Cargo.toml: {}; assuming src/main.rs or S_ISDIR(src/bin/)", err);
+            false
+        }
+    }
+}
+
+#[cfg(all(test, feature = "manifest-discovery"))]
+mod manifest_probe_tests {
+    use super::parse_explicit_bins;
+
+    #[test]
+    fn detects_explicit_bins_with_escaped_paths_and_unknown_fields() {
+        let manifest = r#"
+[package]
+name = "resource-fixture"
+version = "0.1.0"
+edition = "2024"
+custom-key = { nested = [1, 2, 3] }
+
+[[bin]]
+name = "tool"
+path = "src/bin/a\\\"b.rs"
+required-features = ["cli"]
+
+[workspace]
+members = ["members/*"]
+"#;
+        assert_eq!(parse_explicit_bins(manifest).unwrap(), true);
+    }
+
+    #[test]
+    fn autodiscovery_and_inherited_package_fields_do_not_count_as_explicit_bins() {
+        let manifest = r#"
+[package]
+name = "resource-fixture"
+version.workspace = true
+edition.workspace = true
+autobins = true
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+"#;
+        assert_eq!(parse_explicit_bins(manifest).unwrap(), false);
+    }
+
+    #[test]
+    fn empty_bin_array_still_counts_as_present() {
+        assert_eq!(parse_explicit_bins("bin = []").unwrap(), true);
+    }
+
+    #[test]
+    fn malformed_manifest_is_an_error_for_autodiscovery_fallback() {
+        assert!(parse_explicit_bins("[[bin]\nname = \"broken\"").is_err());
+    }
 }
 
 /// Likewise, but only for select binaries.
