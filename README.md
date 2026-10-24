@@ -6,8 +6,8 @@ in the most resilient fashion imaginable
 
 The default `manifest-discovery` feature retains `compile()`. It parses
 `Cargo.toml` with the Teamy Facet stack to detect a top-level `bin` key.
-A serde-free `toml_edit` pass checks semantic errors such as duplicate keys
-before the Facet event probe. If parsing fails, `compile()` keeps the upstream
+An interim serde-free `toml_edit` pass checks semantic errors such as duplicate
+keys before the Facet event probe. If parsing fails, `compile()` keeps the upstream
 fallback to `src/main.rs` or `src/bin/`. The resource compiler and linking
 paths remain upstream code.
 
