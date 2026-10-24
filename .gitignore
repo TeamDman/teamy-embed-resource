@@ -4,6 +4,7 @@
 !gh_rsa.enc
 !appveyor.yml
 !LICENSE
+!LICENSE-MIT-UPSTREAM
 !Cargo.toml
 !Cargo.lock
 !rustfmt.toml

@@ -1,3 +1,8 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+// Upstream portions remain MIT-licensed; see LICENSE-MIT-UPSTREAM.
+
 //! A [`Cargo` build script](http://doc.crates.io/build-script.html) library to handle compilation and inclusion of Windows
 //! resources in the most resilient fashion imaginable
 //!
@@ -166,8 +171,6 @@ use std::fs;
 use std::ffi::{OsString, OsStr};
 use std::borrow::Cow;
 use std::process::Command;
-#[cfg(feature = "manifest-discovery")]
-use facet::Facet;
 use std::fmt::{self, Display};
 use std::path::{Path, PathBuf};
 
@@ -451,24 +454,12 @@ pub fn compile<T: AsRef<Path>,
     CompilationResult::Ok
 }
 
-/// Only the presence of a top-level `bin` array matters here. Unknown Cargo
-/// manifest fields are ignored by Facet, matching the old `toml::Table` probe.
 #[cfg(feature = "manifest-discovery")]
-#[derive(Facet)]
-struct ManifestBinProbe {
-    bin: Option<Vec<BinProbe>>,
-}
-
-#[cfg(feature = "manifest-discovery")]
-#[derive(Facet)]
-struct BinProbe {
-    name: Option<String>,
-    path: Option<String>,
-}
-
-#[cfg(feature = "manifest-discovery")]
-fn parse_explicit_bins(input: &str) -> Result<bool, facet_toml::DeserializeError> {
-    facet_toml::from_str::<ManifestBinProbe>(input).map(|manifest| manifest.bin.is_some())
+fn parse_explicit_bins(input: &str) -> Result<bool, String> {
+    // Upstream checks only whether the top-level key exists. Do not constrain
+    // its value shape: a syntactically valid TOML document may still be an
+    // invalid Cargo manifest, but this probe must keep upstream behavior.
+    facet_toml::contains_top_level_key(input, "bin")
 }
 
 #[cfg(feature = "manifest-discovery")]
@@ -534,8 +525,24 @@ edition = "2024"
     }
 
     #[test]
+    fn any_top_level_bin_shape_counts_as_present() {
+        for manifest in [
+            "bin = [{ name = \"tool\" }]",
+            "\"bin\" = [1]",
+            "[bin]\nname = \"tool\"",
+            "bin.name = \"tool\"",
+            "bin = \"tool\"",
+        ] {
+            assert_eq!(parse_explicit_bins(manifest).unwrap(), true, "{manifest}");
+        }
+        assert_eq!(parse_explicit_bins("[package.bin]\nname = \"nested\"").unwrap(), false);
+    }
+
+    #[test]
     fn malformed_manifest_is_an_error_for_autodiscovery_fallback() {
         assert!(parse_explicit_bins("[[bin]\nname = \"broken\"").is_err());
+        assert!(parse_explicit_bins("[[bin]]\nname = \"tool\"\n[broken").is_err());
+        assert!(parse_explicit_bins("bin = []\nbin = []").is_err());
     }
 }
 

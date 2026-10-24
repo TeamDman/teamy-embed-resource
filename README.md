@@ -5,8 +5,9 @@ in the most resilient fashion imaginable
 ## Teamy fork: optional manifest discovery
 
 The default `manifest-discovery` feature retains `compile()`. It parses
-`Cargo.toml` with the Teamy Facet stack to detect an explicit top-level
-`[[bin]]` declaration. If parsing fails, `compile()` keeps the upstream
+`Cargo.toml` with the Teamy Facet stack to detect a top-level `bin` key.
+A serde-free `toml_edit` pass checks semantic errors such as duplicate keys
+before the Facet event probe. If parsing fails, `compile()` keeps the upstream
 fallback to `src/main.rs` or `src/bin/`. The resource compiler and linking
 paths remain upstream code.
 
@@ -20,10 +21,21 @@ graph:
 embed-resource = { git = "https://github.com/TeamDman/teamy-embed-resource", default-features = false }
 ```
 
-The fork retains the upstream MIT license and history. The local Facet TOML
-source subset has its own MIT OR Apache-2.0 notices in
-`vendor/teamy-facet-toml`. The fork requires Rust 1.92. It has not been
-published to crates.io or qualified on Windows.
+The fork requires Rust 1.92. It has not been published to crates.io or
+qualified on Windows.
+
+## Licenses and provenance
+
+Teamy changes to `embed-resource` are under MPL-2.0 ([LICENSE](LICENSE)).
+The original `embed-resource` source remains MIT licensed, with its exact
+original notice in [LICENSE-MIT-UPSTREAM](LICENSE-MIT-UPSTREAM) and its Git
+history intact. Both terms apply where Teamy changes share a source file with
+upstream code; the package metadata uses `MIT AND MPL-2.0` to reflect this.
+
+The copied Facet TOML parser and Teamy glue within
+`vendor/teamy-facet-toml` use `MIT OR Apache-2.0`, with both original license
+texts and source provenance retained there. This license statement does not
+relicense that separate package.
 
 ## [Documentation](https://docs.rs/embed-resource)
 
