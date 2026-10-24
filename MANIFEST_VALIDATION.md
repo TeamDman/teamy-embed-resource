@@ -1,42 +1,40 @@
-# Manifest validation follow-up
+# Manifest validation qualification
 
-The current `manifest-discovery` implementation is an **interim two-pass
-path**. `toml_edit` 0.23.7 validates TOML semantics, then the owned Facet TOML
-event parser checks whether the top-level `bin` key exists. Both are absent
-when default features are disabled. `compile_for_everything()` never inspects
-the manifest.
+The default `manifest-discovery` feature uses the owned Facet TOML event
+parser. `toml_parser` 1.0.10 validates syntax and event order but leaves
+duplicate keys and table redefinitions to its caller. The local
+`vendor/teamy-facet-toml/src/semantic.rs` checks those rules over the existing
+event stream before Facet exposes it. It tracks decoded paths, implicit,
+dotted and explicit tables, inline tables, and individual array-table
+elements. No second TOML parse is used in the normal dependency graph.
 
-The second pass is needed because `toml_parser` 1.0.10 validates event order
-and syntax, but explicitly leaves semantic checks such as duplicate keys to
-its caller. A direct Facet event scan accepts repeated keys, repeated table
-headers, scalar/table conflicts, duplicate inline-table keys, and some
-array-table conflicts that the upstream `toml::Table` rejects. Conversely,
-reopening an implicit parent table and using the same key in separate array
-table elements are valid. A flat set of seen key names would break those
-cases.
+The dev-only upstream `toml` 1.0.7 dependency is retained as a differential
+comparator. The committed tests cover duplicate scalar and dotted keys,
+quoted and escaped keys, table redefinition, inline tables and arrays, valid
+implicit parent reopening, and array-table element identity. A generated
+390,625-document matrix of four-statement combinations found and resolved
+edge cases involving dotted keys, implicit parents and the latest array-table
+element. The local
+739-document corpus then had zero validity divergences when comparing the
+raw Facet parser to upstream `toml` and zero validity or top-level `bin`
+divergences through `contains_top_level_key`; 737 corpus documents were valid.
+The generated matrix and local corpus paths are not published here.
 
-The focused single-pass correction belongs in the owned Facet TOML parser's
-event intake. Build a semantic table state keyed by decoded TOML paths, with
-explicit versus implicit and dotted table status and a distinct state for
-each array-table element. Validate key assignments and table headers against
-that state while consuming the existing `toml_parser` event stream. Return a
-span-bearing error before exposing events. This keeps the existing resource
-compiler and Facet event conversion intact. Remove `toml_edit` only after the
-differential gate passes for all targeted cases and the local manifest corpus.
+On 24 October 2026, `cargo tree -e normal` showed 30 unique packages with
+default features, 7 with `--no-default-features`, and 14 in the upstream
+checkout. The lean graph contained no Facet, TOML or serde package. Separate
+cold Linux `cargo check --lib` samples took 4.045 seconds default, 0.525
+seconds lean, and 1.867 seconds upstream. These are one-run observations with
+separate target directories, not a benchmark or a Windows speed claim.
 
-`vendor/teamy-facet-toml` has a committed differential test against upstream
-`toml` 1.0.7 as a **dev-only** dependency. It always runs targeted table and
-key cases. Set `EMBED_RESOURCE_MANIFEST_CORPUS_LIST` to a newline-separated
-list of local TOML file paths to run a larger corpus; the 24 October 2026
-cloud review compared 739 documents with zero validity or key-result
-divergences. The source files in that corpus are not copied into this repo.
+Set `EMBED_RESOURCE_MANIFEST_CORPUS_LIST` to a newline-separated list of TOML
+file paths to run the committed corpus comparison test. The test asserts both
+document validity and top-level `bin` detection. This is Linux source and
+parser qualification; Windows resource compiler behavior still needs separate
+qualification.
 
-`toml_edit` 0.23.7 was already available in the cloud registry cache, but is
-new to this fork's normal dependency graph; it was not in the upstream
-`embed-resource` lock. The owned Facet-format workspace instead locks
-`toml_edit` 0.25.13. Version 0.23.7 shares `toml_parser` 1.0.x with the Facet
-source. It adds four unique normal-graph packages here: `toml_edit`,
-`indexmap`, `toml_datetime`, and `winnow` 0.7. The current package graph has
-35 packages with the default feature and 7 without it. A single cold Linux
-`cargo check --lib` run took 3.94 seconds default, 0.54 seconds lean, and
-1.85 seconds for upstream; these are local samples, not a speed guarantee.
+The published `teamy-facet-toml` package does not yet exist. This local
+source subset depends on the compatible published Teamy Facet stack. A future
+crates.io release of this fork requires publishing a compatible owned parser
+package or revisiting the packaging arrangement; that publication is not
+authorized here.

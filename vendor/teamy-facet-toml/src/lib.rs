@@ -3,6 +3,7 @@
 extern crate alloc;
 
 mod parser;
+mod semantic;
 
 pub use facet_format::DeserializeError;
 pub use parser::TomlParser;
@@ -13,10 +14,6 @@ pub use parser::TomlParser;
 pub fn contains_top_level_key(input: &str, searched: &str) -> Result<bool, String> {
     use facet_format::{FormatParser, ParseEventKind};
 
-    // Interim: Facet's event parser accepts some TOML semantic errors,
-    // including duplicate keys. Validate first with toml_edit's serde-free
-    // parser until semantic checks move into the Facet event intake.
-    let _: toml_edit::DocumentMut = input.parse().map_err(|e: toml_edit::TomlError| e.to_string())?;
     let mut parser = TomlParser::new(input).map_err(|e| e.to_string())?;
     let mut depth = 0usize;
     let mut found = false;
@@ -45,7 +42,8 @@ where
 
 #[cfg(test)]
 mod differential_tests {
-    use super::contains_top_level_key;
+    use super::{TomlParser, contains_top_level_key};
+    use facet_format::FormatParser;
 
     fn assert_matches_upstream(input: &str) {
         let upstream = input.parse::<toml::Table>();
@@ -80,6 +78,20 @@ mod differential_tests {
             "bin.name = \"tool\"",
             "bin = \"tool\"",
             "[package.bin]\nname = \"nested\"",
+            "a={b.c=1,b.d=2}",
+            "a={b.c=1,b.c=2}",
+            "a=[{x=1,x=2}]",
+            "[a.b]\nx=1\n[a.c]\ny=2",
+            "[[a]]\n[a.b]\nc=1",
+            "[[b.a]]\n[b]\na.b.c=1",
+            "[[b.a]]\n[b]\na.c=1",
+            "[[a.b]]\n[a]\nb.a=1",
+            "a.b.c=1\n[a.b]\nd=2",
+            "a.b=1\na.c=2",
+            "\"a\\u002eb\"=1\n\"a.b\"=2",
+            "[a.b.c]\n[a]\nb.a=1",
+            "[a.b.c]\n[a]\nb.a=1\n[a.b]",
+            "[[a.b.c]]\n[a]\nb.a=1\n[a.b]",
         ] {
             assert_matches_upstream(input);
         }
@@ -99,5 +111,59 @@ mod differential_tests {
         }
         assert!(count > 0, "corpus list was empty");
         eprintln!("compared {count} TOML documents with upstream");
+    }
+
+    #[test]
+    fn generated_semantic_matrix_matches_upstream_when_requested() {
+        if std::env::var("EMBED_RESOURCE_SEMANTIC_MATRIX").as_deref() != Ok("1") {
+            return;
+        }
+        let statements = [
+            "a=1",
+            "a.b=1",
+            "a.b.c=1",
+            "a.c=1",
+            "b=1",
+            "b.a=1",
+            "a={b=1}",
+            "a={b.c=1,b.d=2}",
+            "a={b=1,b=2}",
+            "a=[{b=1,b=2}]",
+            "a=[]",
+            "a=[1]",
+            "a=[[1]]",
+            "\"a\"=1",
+            "\"a\\u002eb\"=1",
+            "[a]",
+            "[a.b]",
+            "[a.b.c]",
+            "[b]",
+            "[b.a]",
+            "[[a]]",
+            "[[a.b]]",
+            "[[a.b.c]]",
+            "[[b]]",
+            "[[b.a]]",
+        ];
+        let mut compared = 0usize;
+        for first in statements {
+            for second in statements {
+                for third in statements {
+                    for fourth in statements {
+                        let input = format!("{first}\n{second}\n{third}\n{fourth}\n");
+                        let upstream_valid = input.parse::<toml::Table>().is_ok();
+                        let facet_valid = TomlParser::new(&input)
+                            .and_then(|mut parser| {
+                                while parser.next_event()?.is_some() {}
+                                Ok(())
+                            })
+                            .is_ok();
+                        assert_eq!(upstream_valid, facet_valid, "validity mismatch for {input:?}");
+                        compared += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!(compared, 390_625);
     }
 }

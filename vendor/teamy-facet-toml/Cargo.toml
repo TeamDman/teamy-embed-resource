@@ -12,7 +12,6 @@ facet-core = { package = "teamy-facet-core", version = "=0.50.0-rc.7" }
 facet-format = { package = "teamy-facet-format", version = "=0.50.0-rc.9" }
 facet-reflect = { package = "teamy-facet-reflect", version = "=0.50.0-rc.7" }
 toml_parser = { version = "1.0.4", default-features = false, features = ["alloc"] }
-toml_edit = { version = "=0.23.7", default-features = false, features = ["parse"] }
 
 [dev-dependencies]
 facet = { package = "teamy-facet", version = "=0.50.0-rc.7" }

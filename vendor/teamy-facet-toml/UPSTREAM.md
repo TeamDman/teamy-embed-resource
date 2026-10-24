@@ -13,11 +13,12 @@ workspace dependencies point to a sibling `../facet` checkout. A standalone
 Git dependency on that tree would not be self-contained. The published
 upstream `facet-toml` uses upstream Facet package identities, which would add
 an incompatible second reflection stack. This local subset depends only on
-the compatible published Teamy Facet packages, `toml_parser`, and `toml_edit`
-with only its `parse` feature. `toml_edit` validates duplicate keys and table
-redefinitions that the Facet event parser currently accepts; Facet events
-supply the top-level key probe. Both parsers are confined to the default-on
-`manifest-discovery` feature of `embed-resource`.
+the compatible published Teamy Facet packages and `toml_parser`. The local
+`src/semantic.rs` validates duplicate keys and table definitions against the
+same event stream that Facet consumes; Facet events supply the top-level key
+probe. This parser is confined to the default-on `manifest-discovery` feature
+of `embed-resource`. The upstream `toml` crate is a dev-only differential
+comparator, not a normal dependency.
 
 The copied source and local adapter glue remain licensed MIT OR Apache-2.0.
 Both upstream license texts are included here. This local package is

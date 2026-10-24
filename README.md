@@ -1,4 +1,4 @@
-# rust-embed-resource [![AppVeyorCI build status](https://ci.appveyor.com/api/projects/status/nqd8kaa2pgwyiqkk/branch/master?svg=true)](https://ci.appveyor.com/project/nabijaczleweli/rust-embed-resource/branch/master) [![Licence](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE) [![Crates.io version](https://img.shields.io/crates/v/embed-resource)](https://crates.io/crates/embed-resource)
+# rust-embed-resource [![AppVeyorCI build status](https://ci.appveyor.com/api/projects/status/nqd8kaa2pgwyiqkk/branch/master?svg=true)](https://ci.appveyor.com/project/nabijaczleweli/rust-embed-resource/branch/master) [![Licence](https://img.shields.io/badge/license-MIT%20AND%20MPL--2.0-blue.svg?style=flat)](LICENSE) [![Crates.io version](https://img.shields.io/crates/v/embed-resource)](https://crates.io/crates/embed-resource)
 A [`Cargo` build script](https://doc.rust-lang.org/cargo/reference/build-scripts.html) library to handle compilation and inclusion of Windows resources
 in the most resilient fashion imaginable
 
@@ -6,8 +6,8 @@ in the most resilient fashion imaginable
 
 The default `manifest-discovery` feature retains `compile()`. It parses
 `Cargo.toml` with the Teamy Facet stack to detect a top-level `bin` key.
-An interim serde-free `toml_edit` pass checks semantic errors such as duplicate
-keys before the Facet event probe. If parsing fails, `compile()` keeps the upstream
+The owned Facet event intake checks semantic errors such as duplicate keys and
+table redefinitions in one parse. If parsing fails, `compile()` keeps the upstream
 fallback to `src/main.rs` or `src/bin/`. The resource compiler and linking
 paths remain upstream code.
 

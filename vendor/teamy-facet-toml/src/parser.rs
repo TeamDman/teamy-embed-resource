@@ -176,6 +176,8 @@ impl<'de> TomlParser<'de> {
             ));
         }
 
+        crate::semantic::validate(input, &events)?;
+
         Ok(Self {
             input,
             events,
@@ -1351,8 +1353,7 @@ name = "beta"
     }
 
     #[test]
-    fn test_table_reopening() {
-        // Standard table reopening (not array table)
+    fn test_repeated_explicit_table_rejected() {
         let input = r#"
 [foo.bar]
 x = 1
@@ -1363,19 +1364,7 @@ z = 3
 [foo.bar]
 y = 2
 "#;
-        let mut parser = TomlParser::new(input).unwrap();
-        let events = collect_events(&mut parser);
-
-        let event_str = format_events(&events);
-        eprintln!("Table reopen events:\n{}", event_str);
-
-        // Count how many times we see FieldKey("bar")
-        let bar_count = events
-            .iter()
-            .filter(|e| matches!(e, ParseEvent { kind: ParseEventKind::FieldKey(k), .. } if k.name().map(|c| c.as_ref()) == Some("bar")))
-            .count();
-
-        assert_eq!(bar_count, 2, "Should see bar twice (reopened)");
+        assert!(TomlParser::new(input).is_err());
     }
 
     #[test]
@@ -1786,11 +1775,9 @@ version = "1.1.2"
         assert_eq!(config.foo.bar.baz, 42);
     }
 
-    // Table reopening: TOML allows fields for the same struct to appear at different
-    // points in the document. This works because facet-toml uses deferred mode, which
-    // stores frames when we navigate away and restores them when we re-enter.
+    // An implicit parent can be explicitly defined after one of its children.
     #[test]
-    fn test_deserialize_table_reopening() {
+    fn test_deserialize_implicit_parent_reopening() {
         #[derive(Debug, PartialEq, facet::Facet)]
         struct Config {
             foo: Foo,
@@ -1799,33 +1786,23 @@ version = "1.1.2"
         #[derive(Debug, PartialEq, facet::Facet)]
         struct Foo {
             bar: Bar,
-            baz: Baz,
+            y: i64,
         }
 
         #[derive(Debug, PartialEq, facet::Facet)]
         struct Bar {
             x: i64,
-            y: i64,
-        }
-
-        #[derive(Debug, PartialEq, facet::Facet)]
-        struct Baz {
-            z: i64,
         }
 
         let input = r#"
 [foo.bar]
 x = 1
 
-[foo.baz]
-z = 3
-
-[foo.bar]
+[foo]
 y = 2
 "#;
         let config: Config = from_str(input).unwrap();
         assert_eq!(config.foo.bar.x, 1);
-        assert_eq!(config.foo.bar.y, 2);
-        assert_eq!(config.foo.baz.z, 3);
+        assert_eq!(config.foo.y, 2);
     }
 }
