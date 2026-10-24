@@ -6,8 +6,10 @@ in the most resilient fashion imaginable
 
 The default `manifest-discovery` feature retains `compile()`. It parses
 `Cargo.toml` with the Teamy Facet stack to detect a top-level `bin` key.
-The owned Facet event intake checks semantic errors such as duplicate keys and
-table redefinitions in one parse. If parsing fails, `compile()` keeps the upstream
+The Facet event intake checks tokens and table semantics before probing for
+`bin`. The existing `toml_edit` dependency validates date-time scalar values
+while this source subset remains under qualification. If parsing fails,
+`compile()` keeps the upstream
 fallback to `src/main.rs` or `src/bin/`. The resource compiler and linking
 paths remain upstream code.
 

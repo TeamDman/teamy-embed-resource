@@ -1,16 +1,12 @@
-//! Streaming TOML parser implementing the FormatParser trait.
+//! TOML event adapter implementing the FormatParser trait.
 //!
-//! The key challenge with TOML is "table reopening" - fields for the same struct
-//! can appear at different points in the document:
+//! TOML can explicitly define an implicit parent after one of its children:
 //!
 //! ```toml
 //! [foo.bar]
 //! x = 1
 //!
-//! [foo.baz]
-//! z = 3
-//!
-//! [foo.bar]  # reopening!
+//! [foo]  # defining the implicit parent
 //! y = 2
 //! ```
 //!
@@ -30,7 +26,8 @@
 //! ```
 //!
 //! The deserializer with `Partial` in deferred mode handles fields/elements
-//! arriving out of order. No buffering or pre-scanning needed.
+//! arriving out of order. The document's event buffer is checked before
+//! `FormatParser` exposes it.
 
 extern crate alloc;
 
@@ -58,15 +55,23 @@ use toml_parser::{
 /// Collects parse errors from the TOML parser
 struct TomlParseErrorCollector {
     error: Option<(String, facet_reflect::Span)>,
+    fallback_span: Option<toml_parser::Span>,
 }
 
 impl TomlParseErrorCollector {
     const fn new() -> Self {
-        Self { error: None }
+        Self {
+            error: None,
+            fallback_span: None,
+        }
     }
 
     fn take_error(&mut self) -> Option<(String, facet_reflect::Span)> {
         self.error.take()
+    }
+
+    fn set_fallback_span(&mut self, span: toml_parser::Span) {
+        self.fallback_span = Some(span);
     }
 }
 
@@ -76,7 +81,8 @@ impl ErrorSink for TomlParseErrorCollector {
             let toml_span = error
                 .context()
                 .or(error.unexpected())
-                .expect("toml_parser::ParseError must have either context or unexpected span set");
+                .or(self.fallback_span)
+                .unwrap_or_else(|| toml_parser::Span::new_unchecked(0, 0));
             let span =
                 facet_reflect::Span::new(toml_span.start(), toml_span.end() - toml_span.start());
             self.error = Some((error.description().to_string(), span));
@@ -158,6 +164,8 @@ struct SavedState<'de> {
 
 impl<'de> TomlParser<'de> {
     /// Create a new TOML parser from a string slice.
+    ///
+    /// Numeric range errors may still be returned while reading events.
     pub fn new(input: &'de str) -> Result<Self, ParseError> {
         let source = Source::new(input);
         let tokens: Vec<_> = source.lex().collect();
@@ -174,6 +182,56 @@ impl<'de> TomlParser<'de> {
                     message: err_msg.into(),
                 },
             ));
+        }
+
+        // The event parser validates structure, while Raw decoders validate
+        // token contents. Consume every token now so a top-level key probe also
+        // rejects malformed values it would otherwise never deserialize.
+        for event in &events {
+            let span = event.span();
+            error_collector.set_fallback_span(span);
+            if event.kind() == EventKind::Error {
+                return Err(ParseError::new(
+                    facet_reflect::Span::new(span.start(), span.len()),
+                    DeserializeErrorKind::InvalidValue {
+                        message: "invalid TOML token".into(),
+                    },
+                ));
+            }
+            let raw = Raw::new_unchecked(
+                &input[span.start()..span.end()],
+                event.encoding(),
+                span,
+            );
+            let mut decoded = Cow::Borrowed("");
+            match event.kind() {
+                EventKind::SimpleKey => raw.decode_key(&mut decoded, &mut error_collector),
+                EventKind::Scalar => {
+                    let kind = raw.decode_scalar(&mut decoded, &mut error_collector);
+                    if kind == ScalarKind::DateTime && error_collector.error.is_none() {
+                        let _: toml_edit::Value =
+                            raw.as_str().parse().map_err(|e: toml_edit::TomlError| {
+                                ParseError::new(
+                                    facet_reflect::Span::new(span.start(), span.len()),
+                                    DeserializeErrorKind::InvalidValue {
+                                        message: e.to_string().into(),
+                                    },
+                                )
+                            })?;
+                    }
+                }
+                EventKind::Comment => raw.decode_comment(&mut error_collector),
+                EventKind::Newline => raw.decode_newline(&mut error_collector),
+                _ => {}
+            }
+            if let Some((err_msg, span)) = error_collector.take_error() {
+                return Err(ParseError::new(
+                    span,
+                    DeserializeErrorKind::InvalidValue {
+                        message: err_msg.into(),
+                    },
+                ));
+            }
         }
 
         crate::semantic::validate(input, &events)?;
@@ -297,6 +355,19 @@ impl<'de> TomlParser<'de> {
                         )
                     })?,
                 };
+                if !f.is_finite()
+                    && !matches!(
+                        clean.as_str(),
+                        "inf" | "+inf" | "-inf" | "nan" | "+nan" | "-nan"
+                    )
+                {
+                    return Err(ParseError::new(
+                        facet_span,
+                        DeserializeErrorKind::InvalidValue {
+                            message: "floating-point number overflowed".into(),
+                        },
+                    ));
+                }
                 Ok(ScalarValue::F64(f))
             }
             ScalarKind::DateTime => {

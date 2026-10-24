@@ -1,8 +1,9 @@
 //! Semantic table checks for the existing `toml_parser` event stream.
 //!
 //! `toml_parser` validates syntax, but leaves duplicate assignments and table
-//! definitions to its caller. Keep these checks here so Facet only lexes and
-//! parses the document once.
+//! definitions to its caller. The event stream also accepts some malformed
+//! scalar and key forms, so this pass is not full TOML validation. The
+//! top-level manifest probe keeps a separate full-document validation gate.
 //! The small private state types stay together because their transitions form
 //! one validation pass and are reviewed as a unit.
 

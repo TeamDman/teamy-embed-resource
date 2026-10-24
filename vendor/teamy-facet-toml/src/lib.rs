@@ -54,6 +54,17 @@ mod differential_tests {
         }
     }
 
+    fn assert_raw_matches_upstream(input: &str) {
+        let upstream_valid = input.parse::<toml::Table>().is_ok();
+        let facet_valid = TomlParser::new(input)
+            .and_then(|mut parser| {
+                while parser.next_event()?.is_some() {}
+                Ok(())
+            })
+            .is_ok();
+        assert_eq!(upstream_valid, facet_valid, "raw validity mismatch for {input:?}");
+    }
+
     #[test]
     fn table_and_key_semantics_match_upstream() {
         for input in [
@@ -92,8 +103,63 @@ mod differential_tests {
             "[a.b.c]\n[a]\nb.a=1",
             "[a.b.c]\n[a]\nb.a=1\n[a.b]",
             "[[a.b.c]]\n[a]\nb.a=1\n[a.b]",
+            "a={b=1}\na.c=2",
+            "a={b={c=1}}\na.b.d=2",
+            "[[a]]\n[a.b]\nx=1\n[[a]]\n[a.b]\nx=1",
+            "[[a]]\n[a.b]\nx=1\n[[a]]\n[a.b]\nx=1\n[a.b]",
+            "[[a.b]]\nx=1\n[[a.b]]\nx=2",
+            "[a.b]\n[a]\nc=1",
+            "a.b.c=1\n[a]",
+            "\"a.b\"=1\na.b=2",
+            "a.b=1\n\"a.b\"=2",
         ] {
             assert_matches_upstream(input);
+        }
+    }
+
+    #[test]
+    fn malformed_values_and_keys_match_upstream() {
+        for input in [
+            "a=",
+            "a=1b",
+            "a=2024-13-01",
+            "a=2024-02-30",
+            "a=2024-01-01T25:00:00Z",
+            "a=\"unterminated",
+            "a='unterminated",
+            "a=\"bad\\q\"",
+            "a=\"bad\\uZZZZ\"",
+            "=1",
+            "a..b=1",
+            "[]",
+            "[[]]",
+            ".a=1",
+            "a.=1",
+            "a=1 #\u{1}bad",
+            "#\u{0}bad\na=1",
+            "\"\u{1}\"=1",
+            "a=\"\u{0}\"",
+            "a=1\rfoo=2",
+            "a=1e999",
+            "a=-1e999",
+            "a=1.7976931348623159e308",
+            "a=inf",
+            "a=+inf",
+            "a=-nan",
+            "a=1e-999",
+            "a=2024-02-29",
+            "a=2024-01-01T12:34:56.123+03:00",
+            "a=1979-05-27 07:32:00Z",
+            "a=1979-05-27t07:32:00z",
+            "a=07:32:00.123",
+            "a=1 # ordinary comment",
+            "a=1\r\n",
+            "a=1 # café",
+            "a=+9.9e999",
+            "a=-1_0e+999",
+        ] {
+            assert_matches_upstream(input);
+            assert_raw_matches_upstream(input);
         }
     }
 
