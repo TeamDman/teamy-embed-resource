@@ -48,9 +48,9 @@ def consumer(directory: Path, root_package: Path, parser_package: Path, *, lean:
     (directory / "Cargo.toml").write_text(
         '[package]\nname = "package-smoke-consumer"\nversion = "0.0.0"\nedition = "2024"\n\n'
         "[build-dependencies]\n"
-        f'embed-resource = {{ package = "teamy-embed-resource", path = "{root_package}", default-features = {str(not lean).lower()} }}\n\n'
+        f'embed-resource = {{ package = "teamy-embed-resource", path = "{root_package.as_posix()}", default-features = {str(not lean).lower()} }}\n\n'
         "[patch.crates-io]\n"
-        f'teamy-facet-toml = {{ path = "{parser_package}" }}\n'
+        f'teamy-facet-toml = {{ path = "{parser_package.as_posix()}" }}\n'
     )
 
 
@@ -66,7 +66,7 @@ def main() -> None:
         dirty = ["--allow-dirty"] if settings.allow_dirty else []
 
         run(["cargo", "package", "--offline", *dirty, "--manifest-path", str(PARSER / "Cargo.toml")], cwd=ROOT, env=env)
-        patch = f'patch.crates-io.teamy-facet-toml.path="{PARSER}"'
+        patch = f'patch.crates-io.teamy-facet-toml.path="{PARSER.as_posix()}"'
         run(["cargo", "--config", patch, "package", "--offline", *dirty], cwd=ROOT, env=env)
 
         archives = temp / "target" / "package"
