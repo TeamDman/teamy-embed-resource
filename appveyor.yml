@@ -38,9 +38,3 @@ test_script:
   - cargo test --verbose --release
   - cargo run --verbose --release -- empty-resource.rc
   - cargo run --verbose --release -- include-version.rc .github/workflows/msvc
-
-notifications:
-  - provider: Email
-    to:
-      - nabijaczleweli@gmail.com
-    on_build_status_changed: true
