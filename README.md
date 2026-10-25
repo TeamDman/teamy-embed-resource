@@ -22,16 +22,13 @@ graph:
 
 ```toml
 [build-dependencies]
-embed-resource = { package = "teamy-embed-resource", git = "https://github.com/TeamDman/teamy-embed-resource", branch = "teamy/facet-packaging-prep", default-features = false }
+embed-resource = { package = "teamy-embed-resource", version = "=0.1.0", default-features = false }
 ```
 
-The fork requires Rust 1.92. It has not been published to crates.io or
-qualified on Windows.
-Its proposed initial registry version is `0.1.0`; after a release, consumers
-can use `embed-resource = { package = "teamy-embed-resource", version = "0.1.0" }`
-to keep `embed_resource::` source imports. That registry declaration is not
-usable yet. See [PACKAGING.md](PACKAGING.md) for the verified source archives and remaining
-registry publication blockers.
+The fork requires Rust 1.92. The default `manifest-discovery` feature depends
+on `teamy-facet-toml` 0.50.0-rc.7. The dependency alias keeps existing
+`embed_resource::` source imports. See [PACKAGING.md](PACKAGING.md) for release
+qualification and package details.
 
 ## Licenses and provenance
 
@@ -76,9 +73,6 @@ can be anything that satisfies `IntoIterator<AsRef<OsStr>>`:
 Courtesy of [@jpoles1](https://github.com/jpoles1).
 
 The following steps are used to embed a manifest in your compiled rust .exe file. In this example the manifest will cause admin permissions to be requested for the final executable:
-
-The registry declaration in step 1 applies only after an approved release.
-For the current fork source, use the Git dependency shown above.
 
 1. Add the following to your cargo.toml:
 ```toml

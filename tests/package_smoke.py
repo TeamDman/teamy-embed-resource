@@ -83,7 +83,7 @@ def main() -> None:
         parser_manifest = tomllib.loads((parser_package / "Cargo.toml").read_text())
         root_manifest = tomllib.loads((root_package / "Cargo.toml").read_text())
         assert parser_manifest["package"]["publish"] == ["crates-io"]
-        assert root_manifest["package"]["publish"] is False
+        assert root_manifest["package"]["publish"] == ["crates-io"]
         assert root_manifest["package"]["name"] == "teamy-embed-resource"
         assert root_manifest["package"]["version"] == "0.1.0"
         assert root_manifest["lib"]["name"] == "embed_resource"
@@ -107,7 +107,7 @@ def main() -> None:
                 assert "toml_edit v0.23.7" in tree
 
     print("parser and root archives verified; extracted lean/default consumers passed with a local parser patch")
-    print("nothing was published; the root archive still requires unpublished teamy-facet-toml")
+    print("registry publication and registry-backed consumers require separate verification")
 
 
 if __name__ == "__main__":

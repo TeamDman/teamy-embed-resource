@@ -38,7 +38,6 @@ lean graph contained no Facet, TOML or serde package. The root lock retains
 dev-only comparator packages; inspect the normal graph for build dependency
 claims. Separate cold Linux `cargo check --lib` samples took 3.981 seconds
 default, 0.542 seconds lean, and 1.867 seconds upstream. These are single
-observations, not a speed benchmark or a Windows claim. A future crates.io
-release requires publishing a compatible owned
-`teamy-facet-toml` package or revisiting this local source arrangement. No
-package publication is authorized here.
+observations, not a speed benchmark or a Windows claim. The default registry
+package requires `teamy-facet-toml` 0.50.0-rc.7. Publish and verify that
+dependency before publishing `teamy-embed-resource` 0.1.0.

@@ -8,8 +8,7 @@ categories = ["development-tools", "os::windows-apis"]
 edition = "2021"
 rust-version = "1.92"
 license = "MIT AND MPL-2.0"
-publish = false
-# Proposed first fork release. No registry release has been made.
+publish = ["crates-io"]
 version = "0.1.0"
 authors = ["наб <nabijaczleweli@nabijaczleweli.xyz>",
            "Cat Plus Plus <piotrlegnica@piotrl.pl>",

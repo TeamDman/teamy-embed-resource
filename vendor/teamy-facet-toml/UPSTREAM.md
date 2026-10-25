@@ -22,7 +22,6 @@ Both are confined to the default-on `manifest-discovery` feature of
 comparator, not a normal dependency.
 
 The copied source and local adapter glue remain licensed MIT OR Apache-2.0.
-Both upstream license texts are included here. This local package is
-wired for future publication, but currently unpublished. If a future crates.io
-release of `teamy-embed-resource` is wanted, publish a compatible owned
-`teamy-facet-toml` first or revisit this packaging arrangement.
+Both upstream license texts are included here. Release this compatible owned
+parser before `teamy-embed-resource` so the default feature resolves from the
+registry.
