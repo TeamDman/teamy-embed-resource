@@ -1,10 +1,12 @@
-"""Check both crate archives and extracted consumers without publishing.
+"""Check the root archive and registry-backed extracted consumers.
 
 Usage: python3 tests/package_smoke.py [--allow-dirty]
-The local patch stands in for the unpublished teamy-facet-toml registry entry.
+The extracted default consumer resolves teamy-facet-toml from crates.io.
 """
 
 import argparse
+import hashlib
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -14,7 +16,6 @@ import tomllib
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PARSER = ROOT / "vendor" / "teamy-facet-toml"
 
 
 def run(args: list[str], *, cwd: Path, env: dict[str, str]) -> str:
@@ -35,7 +36,7 @@ def extract(archive: Path, directory: Path, required: set[str]) -> Path:
     return directory / prefix
 
 
-def consumer(directory: Path, root_package: Path, parser_package: Path, *, lean: bool) -> None:
+def consumer(directory: Path, root_package: Path, *, lean: bool) -> None:
     directory.mkdir()
     (directory / "src").mkdir()
     (directory / "src" / "main.rs").write_text("fn main() {}\n")
@@ -48,9 +49,7 @@ def consumer(directory: Path, root_package: Path, parser_package: Path, *, lean:
     (directory / "Cargo.toml").write_text(
         '[package]\nname = "package-smoke-consumer"\nversion = "0.0.0"\nedition = "2024"\n\n'
         "[build-dependencies]\n"
-        f'embed-resource = {{ package = "teamy-embed-resource", path = "{root_package.as_posix()}", default-features = {str(not lean).lower()} }}\n\n'
-        "[patch.crates-io]\n"
-        f'teamy-facet-toml = {{ path = "{parser_package.as_posix()}" }}\n'
+        f'embed-resource = {{ package = "teamy-embed-resource", path = "{root_package.as_posix()}", default-features = {str(not lean).lower()} }}\n'
     )
 
 
@@ -64,14 +63,21 @@ def main() -> None:
         env = os.environ.copy()
         env["CARGO_TARGET_DIR"] = str(temp / "target")
         dirty = ["--allow-dirty"] if settings.allow_dirty else []
+        host = next(line.removeprefix("host: ") for line in run(["rustc", "-vV"], cwd=ROOT, env=env).splitlines() if line.startswith("host: "))
 
-        run(["cargo", "package", "--offline", *dirty, "--manifest-path", str(PARSER / "Cargo.toml")], cwd=ROOT, env=env)
-        patch = f'patch.crates-io.teamy-facet-toml.path="{PARSER.as_posix()}"'
-        run(["cargo", "--config", patch, "package", "--offline", *dirty], cwd=ROOT, env=env)
+        run(["cargo", "package", "--offline", "--locked", *dirty], cwd=ROOT, env=env)
 
         archives = temp / "target" / "package"
+        cargo_home = Path(env.get("CARGO_HOME") or Path.home() / ".cargo")
+        parser_archives = list((cargo_home / "registry" / "cache").glob("*/teamy-facet-toml-0.50.0-rc.7.crate"))
+        assert len(parser_archives) == 1, parser_archives
+        parser_archive = parser_archives[0]
+        lock_packages = tomllib.loads((ROOT / "Cargo.lock").read_text())["package"]
+        parser_lock = next(package for package in lock_packages if package["name"] == "teamy-facet-toml")
+        assert parser_lock["source"].startswith("registry+")
+        assert hashlib.sha256(parser_archive.read_bytes()).hexdigest() == parser_lock["checksum"]
         parser_package = extract(
-            archives / "teamy-facet-toml-0.50.0-rc.7.crate",
+            parser_archive,
             temp,
             {"Cargo.toml", "README.md", "UPSTREAM.md", "LICENSE-MIT", "LICENSE-APACHE", "src/parser.rs", "src/semantic.rs"},
         )
@@ -92,11 +98,10 @@ def main() -> None:
         assert parser_dependency["version"] == "=0.50.0-rc.7"
         assert "path" not in parser_dependency
 
-        run(["cargo", "test", "--offline", "--manifest-path", str(parser_package / "Cargo.toml")], cwd=temp, env=env)
         for lean in (True, False):
             mode = "lean" if lean else "default"
             project = temp / f"consumer-{mode}"
-            consumer(project, root_package, parser_package, lean=lean)
+            consumer(project, root_package, lean=lean)
             run(["cargo", "check", "--offline", "--manifest-path", str(project / "Cargo.toml")], cwd=temp, env=env)
             tree = run(["cargo", "tree", "--offline", "-e", "normal,build", "--prefix", "none", "--manifest-path", str(project / "Cargo.toml")], cwd=temp, env=env)
             if lean:
@@ -105,9 +110,11 @@ def main() -> None:
                 assert "teamy-facet-toml v0.50.0-rc.7" in tree
                 assert "toml_parser v1.0.10" in tree
                 assert "toml_edit v0.23.7" in tree
+                metadata = json.loads(run(["cargo", "metadata", "--offline", "--locked", "--filter-platform", host, "--format-version", "1", "--manifest-path", str(project / "Cargo.toml")], cwd=temp, env=env))
+                parser = next(package for package in metadata["packages"] if package["name"] == "teamy-facet-toml")
+                assert parser["source"].startswith("registry+"), parser
 
-    print("parser and root archives verified; extracted lean/default consumers passed with a local parser patch")
-    print("registry publication and registry-backed consumers require separate verification")
+    print("published parser archive checksum and root archive verified; extracted lean/default consumers passed with the registry parser")
 
 
 if __name__ == "__main__":
