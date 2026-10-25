@@ -25,6 +25,8 @@ embed-resource = { git = "https://github.com/TeamDman/teamy-embed-resource", def
 
 The fork requires Rust 1.92. It has not been published to crates.io or
 qualified on Windows.
+See [PACKAGING.md](PACKAGING.md) for the verified source archives and remaining
+registry publication blockers.
 
 ## Licenses and provenance
 
