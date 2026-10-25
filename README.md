@@ -1,6 +1,8 @@
-# rust-embed-resource [![AppVeyorCI build status](https://ci.appveyor.com/api/projects/status/nqd8kaa2pgwyiqkk/branch/master?svg=true)](https://ci.appveyor.com/project/nabijaczleweli/rust-embed-resource/branch/master) [![Licence](https://img.shields.io/badge/license-MIT%20AND%20MPL--2.0-blue.svg?style=flat)](LICENSE) [![Crates.io version](https://img.shields.io/crates/v/embed-resource)](https://crates.io/crates/embed-resource)
+# teamy-embed-resource [![Licence](https://img.shields.io/badge/license-MIT%20AND%20MPL--2.0-blue.svg?style=flat)](LICENSE)
 A [`Cargo` build script](https://doc.rust-lang.org/cargo/reference/build-scripts.html) library to handle compilation and inclusion of Windows resources
 in the most resilient fashion imaginable
+
+This is an owned fork of [rust-embed-resource](https://github.com/nabijaczleweli/rust-embed-resource).
 
 ## Teamy fork: optional manifest discovery
 
@@ -9,8 +11,8 @@ The default `manifest-discovery` feature retains `compile()`. It parses
 The Facet event intake checks tokens and table semantics before probing for
 `bin`. The existing `toml_edit` dependency validates date-time scalar values
 while this source subset remains under qualification. If parsing fails,
-`compile()` keeps the upstream
-fallback to `src/main.rs` or `src/bin/`. The resource compiler and linking
+`compile()` keeps the upstream fallback to `src/main.rs` or `src/bin/`.
+The resource compiler and linking
 paths remain upstream code.
 
 Projects that use `compile_for_everything()` or another `compile_for*()` API
@@ -20,17 +22,20 @@ graph:
 
 ```toml
 [build-dependencies]
-embed-resource = { git = "https://github.com/TeamDman/teamy-embed-resource", default-features = false }
+embed-resource = { package = "teamy-embed-resource", git = "https://github.com/TeamDman/teamy-embed-resource", branch = "teamy/facet-packaging-prep", default-features = false }
 ```
 
 The fork requires Rust 1.92. It has not been published to crates.io or
 qualified on Windows.
-See [PACKAGING.md](PACKAGING.md) for the verified source archives and remaining
+Its proposed initial registry version is `0.1.0`; after a release, consumers
+can use `embed-resource = { package = "teamy-embed-resource", version = "0.1.0" }`
+to keep `embed_resource::` source imports. That registry declaration is not
+usable yet. See [PACKAGING.md](PACKAGING.md) for the verified source archives and remaining
 registry publication blockers.
 
 ## Licenses and provenance
 
-Teamy changes to `embed-resource` are under MPL-2.0 ([LICENSE](LICENSE)).
+Teamy changes to `teamy-embed-resource` are under MPL-2.0 ([LICENSE](LICENSE)).
 The original `embed-resource` source remains MIT licensed, with its exact
 original notice in [LICENSE-MIT-UPSTREAM](LICENSE-MIT-UPSTREAM) and its Git
 history intact. Both terms apply where Teamy changes share a source file with
@@ -41,7 +46,7 @@ The copied Facet TOML parser and Teamy glue within
 texts and source provenance retained there. This license statement does not
 relicense that separate package.
 
-## [Documentation](https://docs.rs/embed-resource)
+## [Upstream documentation](https://docs.rs/embed-resource)
 
 ## Quickstart
 
@@ -72,10 +77,13 @@ Courtesy of [@jpoles1](https://github.com/jpoles1).
 
 The following steps are used to embed a manifest in your compiled rust .exe file. In this example the manifest will cause admin permissions to be requested for the final executable:
 
+The registry declaration in step 1 applies only after an approved release.
+For the current fork source, use the Git dependency shown above.
+
 1. Add the following to your cargo.toml:
 ```toml
 [build-dependencies]
-embed-resource = "3.0"
+embed-resource = { package = "teamy-embed-resource", version = "0.1.0" }
 ```
 
 2. In your project root directory, add a file named `build.rs` with the following:

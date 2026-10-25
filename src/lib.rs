@@ -41,7 +41,8 @@
 //! build = "build.rs"
 //!
 //! [build-dependencies]
-//! embed-resource = "3.0"
+//! # Proposed registry declaration after an approved release:
+//! embed-resource = { package = "teamy-embed-resource", version = "0.1.0" }
 //! ```
 //!
 //! In `build.rs`:

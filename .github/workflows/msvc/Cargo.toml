@@ -10,4 +10,4 @@ name = "embed-resource-msvc-test"
 path = "main.rs"
 
 [build-dependencies]
-embed-resource.path = "../../.."
+embed-resource = { package = "teamy-embed-resource", path = "../../.." }

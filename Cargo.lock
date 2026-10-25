@@ -71,22 +71,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "embed-resource"
-version = "3.0.12"
-dependencies = [
- "cc",
- "memchr",
- "rustc_version",
- "teamy-facet-toml",
- "vswhom",
- "winreg",
-]
-
-[[package]]
 name = "embed-resource-msvc-test"
 version = "0.0.0"
 dependencies = [
- "embed-resource",
+ "teamy-embed-resource",
 ]
 
 [[package]]
@@ -268,6 +256,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3acccfbd01e7cf4c7ea384b46df6ba3afb934ad88abd247f92998249854de968"
 dependencies = [
  "blake3",
+]
+
+[[package]]
+name = "teamy-embed-resource"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "memchr",
+ "rustc_version",
+ "teamy-facet-toml",
+ "vswhom",
+ "winreg",
 ]
 
 [[package]]

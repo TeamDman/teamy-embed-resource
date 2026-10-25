@@ -48,7 +48,7 @@ def consumer(directory: Path, root_package: Path, parser_package: Path, *, lean:
     (directory / "Cargo.toml").write_text(
         '[package]\nname = "package-smoke-consumer"\nversion = "0.0.0"\nedition = "2024"\n\n'
         "[build-dependencies]\n"
-        f'embed-resource = {{ path = "{root_package}", default-features = {str(not lean).lower()} }}\n\n'
+        f'embed-resource = {{ package = "teamy-embed-resource", path = "{root_package}", default-features = {str(not lean).lower()} }}\n\n'
         "[patch.crates-io]\n"
         f'teamy-facet-toml = {{ path = "{parser_package}" }}\n'
     )
@@ -76,7 +76,7 @@ def main() -> None:
             {"Cargo.toml", "README.md", "UPSTREAM.md", "LICENSE-MIT", "LICENSE-APACHE", "src/parser.rs", "src/semantic.rs"},
         )
         root_package = extract(
-            archives / "embed-resource-3.0.12.crate",
+            archives / "teamy-embed-resource-0.1.0.crate",
             temp,
             {"Cargo.toml", "README.md", "PACKAGING.md", "LICENSE", "LICENSE-MIT-UPSTREAM", "src/lib.rs"},
         )
@@ -84,6 +84,9 @@ def main() -> None:
         root_manifest = tomllib.loads((root_package / "Cargo.toml").read_text())
         assert parser_manifest["package"]["publish"] == ["crates-io"]
         assert root_manifest["package"]["publish"] is False
+        assert root_manifest["package"]["name"] == "teamy-embed-resource"
+        assert root_manifest["package"]["version"] == "0.1.0"
+        assert root_manifest["lib"]["name"] == "embed_resource"
         parser_dependency = root_manifest["dependencies"]["facet-toml"]
         assert parser_dependency["package"] == "teamy-facet-toml"
         assert parser_dependency["version"] == "=0.50.0-rc.7"

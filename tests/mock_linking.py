@@ -87,7 +87,9 @@ def run_case(root: Path, name: str, case: dict, upstream: bool) -> tuple[str, ..
         directory = Path(temporary)
         (directory / "Cargo.toml").write_text(
             case["manifest"]
-            + '\n[build-dependencies]\nembed-resource = { path = "'
+            + '\n[build-dependencies]\nembed-resource = { package = "'
+            + ("embed-resource" if upstream else "teamy-embed-resource")
+            + '", path = "'
             + str(root)
             + '\", default-features = '
             + ("true" if upstream or case["api"] == "compile" else "false")

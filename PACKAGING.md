@@ -9,14 +9,18 @@ manifest permits a future crates.io submission after authorization and a
 registry name/owner check. It is a packaging candidate, not a published crate.
 No crate has been published from this fork.
 
-The root `embed-resource` archive does **not** contain the nested parser
+The root `teamy-embed-resource` archive does **not** contain the nested parser
 package. Cargo strips the local path from its normalized manifest, leaving a
 versioned dependency on `teamy-facet-toml`. A normal offline `cargo package`
 for the root currently fails because that package is absent from the registry.
-The existing `embed-resource` name and version `3.0.12` are also already used
-by upstream on crates.io. The root manifest has `publish = false`; a future
-owned registry identity/version decision is needed. Keep the original upstream
-history, MIT notice and MPL-2.0 Teamy terms intact if that decision is made.
+The root package now has the proposed owned identity and initial version
+`teamy-embed-resource` `0.1.0`, with `[lib] name = "embed_resource"` for source
+compatibility. Cargo consumers can declare the dependency as
+`embed-resource = { package = "teamy-embed-resource", version = "0.1.0" }`
+after an approved release. The root manifest keeps `publish = false` until
+Windows qualification and explicit release approval. A read-only crates.io
+lookup on 25 October 2026 found no listing for `teamy-embed-resource`; this
+does not reserve the name or prove publication rights.
 
 Run `python3 tests/package_smoke.py` from this checkout to create both archives
 offline, verify the parser archive, and check extracted lean and default

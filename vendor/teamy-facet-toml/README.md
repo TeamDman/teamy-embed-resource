@@ -8,7 +8,7 @@ The existing `toml_edit` dependency validates date-time scalar ranges only.
 Its package archive can be built and checked locally. The manifest permits a
 future crates.io submission, but no registry release is authorized yet and
 the registry name/owner must still be confirmed at publication time.
-The root `embed-resource` package requires a registry release of this crate
+The root `teamy-embed-resource` package requires a registry release of this crate
 before its own registry package can resolve without a local patch.
 
 See [UPSTREAM.md](UPSTREAM.md) for the exact parser source revision and
