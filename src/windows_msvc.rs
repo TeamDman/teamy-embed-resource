@@ -8,7 +8,6 @@ use std::borrow::Cow;
 use winreg::enums::*;
 use std::ffi::OsStr;
 use std::{env, fs};
-use winreg;
 
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -33,7 +32,7 @@ impl ResourceCompiler {
         let (_, rc) = env_target_and_rc()?;
         let rc = rc.map(PathBuf::from).or_else(|| find_windows_sdk_tool_impl("rc.exe"));
         // `.res`es are linkable under MSVC as well as normal libraries.
-        if !apply_parameters(Command::new(rc.as_deref().unwrap_or(Path::new("rc.exe"))).args(&["/fo", &out_file, "/I", out_dir]),
+        if !apply_parameters(Command::new(rc.as_deref().unwrap_or(Path::new("rc.exe"))).args(["/fo", &out_file, "/I", out_dir]),
                              "/D",
                              "/I",
                              parameters)
@@ -130,7 +129,7 @@ fn find_windows_10_kits_tool(key: &str, arch: Arch, tool: &str) -> Option<PathBu
     include_windows_10_kits(&kit_root);
     let root_dir = kit_root + "/bin";
 
-    for entry in fs::read_dir(&root_dir).ok()?.filter(|d| d.is_ok()).map(Result::unwrap) {
+    for entry in fs::read_dir(&root_dir).ok()?.flatten() {
         let fname = entry.file_name().into_string();
         let ftype = entry.file_type();
         if fname.is_err() || ftype.is_err() || ftype.unwrap().is_file() {

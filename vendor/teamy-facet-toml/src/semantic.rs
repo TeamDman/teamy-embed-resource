@@ -105,8 +105,7 @@ impl<'a> Cursor<'a> {
 
     fn key_path(&mut self) -> Vec<Key> {
         let mut path = Vec::new();
-        loop {
-            let Some(event) = self.peek() else { break };
+        while let Some(event) = self.peek() {
             match event.kind() {
                 EventKind::SimpleKey => {
                     let span = event.span();

@@ -501,7 +501,7 @@ required-features = ["cli"]
 [workspace]
 members = ["members/*"]
 "#;
-        assert_eq!(parse_explicit_bins(manifest).unwrap(), true);
+        assert!(parse_explicit_bins(manifest).unwrap());
     }
 
     #[test]
@@ -517,12 +517,12 @@ autobins = true
 version = "0.1.0"
 edition = "2024"
 "#;
-        assert_eq!(parse_explicit_bins(manifest).unwrap(), false);
+        assert!(!parse_explicit_bins(manifest).unwrap());
     }
 
     #[test]
     fn empty_bin_array_still_counts_as_present() {
-        assert_eq!(parse_explicit_bins("bin = []").unwrap(), true);
+        assert!(parse_explicit_bins("bin = []").unwrap());
     }
 
     #[test]
@@ -534,9 +534,9 @@ edition = "2024"
             "bin.name = \"tool\"",
             "bin = \"tool\"",
         ] {
-            assert_eq!(parse_explicit_bins(manifest).unwrap(), true, "{manifest}");
+            assert!(parse_explicit_bins(manifest).unwrap(), "{manifest}");
         }
-        assert_eq!(parse_explicit_bins("[package.bin]\nname = \"nested\"").unwrap(), false);
+        assert!(!parse_explicit_bins("[package.bin]\nname = \"nested\"").unwrap());
     }
 
     #[test]
@@ -675,7 +675,7 @@ fn compile_impl<Ms: AsRef<OsStr>, Mi: IntoIterator<Item = Ms>, Is: AsRef<OsStr>,
         let prefix = &resource_file.file_stem().expect("resource_file has no stem").to_str().expect("resource_file's stem not UTF-8");
         let out_dir = env::var("OUT_DIR").expect("No OUT_DIR env var");
 
-        let out_file = comp.compile_resource(&out_dir, &prefix, resource_file.to_str().expect("resource_file not UTF-8"), parameters.into())
+        let out_file = comp.compile_resource(&out_dir, prefix, resource_file.to_str().expect("resource_file not UTF-8"), parameters.into())
             .map_err(CompilationResult::Failed)?;
         Ok((prefix, out_dir, out_file))
     }
@@ -737,7 +737,7 @@ pub fn find_windows_sdk_tool<T: AsRef<str>>(tool: T) -> Option<PathBuf> {
 #[allow(unused)]
 fn env_target_and_rc() -> Result<(String, Option<OsString>), Cow<'static, str>> {
     let target = env::var("TARGET").map_err(|_| Cow::from("no $TARGET"))?;
-    let rc = env::var_os(&format!("RC_{}", target)).or_else(|| env::var_os(&format!("RC_{}", target.replace('-', "_")))).or_else(|| env::var_os("RC"));
+    let rc = env::var_os(format!("RC_{}", target)).or_else(|| env::var_os(format!("RC_{}", target.replace('-', "_")))).or_else(|| env::var_os("RC"));
     Ok((target, rc))
 }
 
